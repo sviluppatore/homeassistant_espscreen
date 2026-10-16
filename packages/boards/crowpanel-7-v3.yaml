@@ -1,0 +1,101 @@
+# Experimental Elecrow CrowPanel Basic 7-inch, DIS08070H, PCB V3.0.
+# Hardware values follow Elecrow's example/V3.0/ESPHome/basic-hmi-70inch.yaml.
+# Not compiled or physically accepted yet. See docs/CROWPANEL7V3.md.
+packages:
+  hardware: !include ../hardware/esp32s3-rgb.yaml
+  flash: !include ../hardware/flash-4mb.yaml
+  look: !include ../looks/standard.yaml
+  touch: !include ../features/capacitive-touch.yaml
+  backlight: !include ../features/backlight.yaml
+  self_test: !include ../features/self-test.yaml
+
+substitutions:
+  BOARD_ID: "crowpanel7v3"
+  DEVICE_NAME: "crowpanel7v3-bench"
+  DEVICE_FRIENDLY_NAME: "CrowPanel 7 V3 Bench"
+  PANEL_W: "800"
+  PANEL_H: "480"
+  DISPLAY_DPI: "133.279"
+  ROTATION_LANDSCAPE: "0"
+  GRID_COLS: "4"
+  GRID_ROWS: "4"
+  GRID_COLS_PORTRAIT: "2"
+  GRID_ROWS_PORTRAIT: "7"
+  SCREEN_MAX_TILES: "128"
+  SCREEN_MAX_PAGES: "24"
+  SCREEN_MAX_BAR_ITEMS: "12"
+  LVGL_BUFFER_SIZE: "12%"
+  BEDSIDE_OWN_DIGITS: "0"
+  BACKLIGHT_FREQUENCY: "1220Hz"
+  CROWPANEL_RESET_TOUCH: "true"
+  CROWPANEL_TOUCH_ADDRESS: "0x5D"
+  CROWPANEL_PCLK: "15MHz"
+
+esp32:
+  flash_size: 4MB
+
+logger:
+  hardware_uart: UART0
+
+i2c:
+  id: touch_bus
+  sda: GPIO19
+  scl: GPIO20
+  frequency: 100kHz
+  scan: true
+
+# A separate component preserves the shared core's on_boot automation.
+crowpanel_v3:
+  id: crowpanel_touch_init
+  i2c_id: touch_bus
+  address: 0x18
+  reset_touch: ${CROWPANEL_RESET_TOUCH}
+
+output:
+  - platform: ledc
+    pin: GPIO2
+    id: gpio_backlight_pwm
+    frequency: ${BACKLIGHT_FREQUENCY}
+
+touchscreen:
+  - platform: gt911
+    id: ts_touch
+    i2c_id: touch_bus
+    address: ${CROWPANEL_TOUCH_ADDRESS}
+    display: my_display
+    update_interval: 20ms
+    setup_priority: 500
+    calibration:
+      x_min: 0
+      x_max: ${PANEL_W}
+      y_min: 0
+      y_max: ${PANEL_H}
+
+# Explicit pins: ESPHome's CROWPANEL-ADVANCE-7 preset is different hardware.
+display:
+  - platform: mipi_rgb
+    model: RPI
+    id: my_display
+    dimensions:
+      width: ${PANEL_W}
+      height: ${PANEL_H}
+    color_order: RGB
+    invert_colors: false
+    update_interval: never
+    auto_clear_enabled: false
+    de_pin: GPIO41
+    hsync_pin: GPIO39
+    vsync_pin: GPIO40
+    pclk_pin: GPIO0
+    pclk_frequency: ${CROWPANEL_PCLK}
+    pclk_inverted: true
+    hsync_front_porch: 40
+    hsync_pulse_width: 48
+    hsync_back_porch: 40
+    vsync_front_porch: 1
+    vsync_pulse_width: 31
+    vsync_back_porch: 13
+    data_pins:
+      red: [GPIO14, GPIO21, GPIO47, GPIO48, GPIO45]
+      green: [GPIO9, GPIO46, GPIO3, GPIO8, GPIO16, GPIO1]
+      blue: [GPIO15, GPIO5, GPIO6, GPIO7, GPIO4]
